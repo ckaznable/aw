@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use fastrand::Rng;
 use ratatui::{
     buffer::Buffer,
@@ -17,36 +19,51 @@ impl ColorWall {
             }
         }
     }
+
+    fn layout(area: Rect) -> Vec<Rc<[Rect]>> {
+        let (column, row) = Self::column_and_row(&area);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints((0..column).map(|_| Ratio(1, column)).collect::<Vec<_>>())
+            .split(area)
+            .iter()
+            .copied()
+            .map(|area| Layout::default()
+                .constraints((0..row).map(|_| Ratio(1, row)).collect::<Vec<_>>())
+                .split(area)
+            )
+            .collect::<Vec<_>>()
+    }
+
+    #[inline]
+    fn column_and_row(area: &Rect) -> (u32, u32) {
+        (
+            Self::limit_size(area.width as u32),
+            Self::limit_size(area.height as u32),
+        )
+    }
+
+    #[inline]
+    fn limit_size(len: u32) -> u32 {
+        if len < 100 {
+            len % 25
+        } else {
+            len / 25
+        }
+    }
 }
 
 impl Widget for ColorWall {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Percentage(25),
-                Percentage(25),
-                Percentage(25),
-                Percentage(25),
-            ])
-            .split(area);
+        let layout = Self::layout(area);
 
         let mut rng = Rng::new();
-        for area in layout.iter().copied() {
-            let layout = Layout::default()
-                .constraints([Percentage(50), Percentage(50)])
-                .split(area);
-
-            Self::render_colors(
-                layout[0],
-                buf,
-                Color::Rgb(rng.u8(0..255), rng.u8(0..255), rng.u8(0..255)),
-            );
-            Self::render_colors(
-                layout[1],
-                buf,
-                Color::Rgb(rng.u8(0..255), rng.u8(0..255), rng.u8(0..255)),
-            );
+        for columns in layout.into_iter() {
+            for row in columns.iter().copied() {
+                let color = Color::Rgb(rng.u8(0..255), rng.u8(0..255), rng.u8(0..255));
+                Self::render_colors(row, buf, color);
+            }
         }
     }
 }
