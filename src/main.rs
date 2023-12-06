@@ -1,38 +1,64 @@
+mod app;
 mod wall;
 
+use app::{App, Action};
 use crossterm::{
-    event::{self, Event, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
+    execute,
 };
 use ratatui::prelude::*;
-use std::io::{self, stdout};
+use std::error::Error;
 use wall::ColorWall;
 
-fn main() -> io::Result<()> {
-    enable_raw_mode()?;
-    stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
-
-    let mut should_quit = false;
-    while !should_quit {
-        terminal.draw(ui)?;
-        should_quit = handle_events()?;
-    }
-
-    disable_raw_mode()?;
-    stdout().execute(LeaveAlternateScreen)?;
-    Ok(())
+struct Tui {
+    terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
 }
 
-fn handle_events() -> io::Result<bool> {
-    if let Event::Key(key) = event::read()? {
-        if key.kind == event::KeyEventKind::Press && key.code == KeyCode::Char('q') {
-            return Ok(true);
-        }
+impl Tui {
+    fn new() -> Result<Self, Box<dyn Error>> {
+        enable_raw_mode()?;
+        let mut stdout = std::io::stdout();
+        execute!(stdout, EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stdout);
+        let terminal = Terminal::new(backend)?;
+        Ok(Tui { terminal })
     }
 
-    Ok(false)
+    fn run(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut app = App::new();
+
+        loop {
+            self.terminal.draw(ui)?;
+
+            let recv = app.next();
+            match recv {
+                Ok(action) => match action {
+                    Action::Quit => break,
+                    Action::Render => (),
+                }
+                Err(_) => break
+            }
+        };
+
+        Ok(())
+    }
+}
+
+impl Drop for Tui {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+        let _ = execute!(
+            self.terminal.backend_mut(),
+            LeaveAlternateScreen
+        );
+        let _ = self.terminal.show_cursor();
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut tui = Tui::new()?;
+    tui.run()
 }
 
 fn ui(frame: &mut Frame) {
