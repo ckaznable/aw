@@ -15,21 +15,21 @@ use wall::ColorWall;
 
 struct Tui {
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+    args: Args,
 }
 
 impl Tui {
-    fn new() -> Result<Self, Box<dyn Error>> {
+    fn new(args: Args) -> Result<Self, Box<dyn Error>> {
         enable_raw_mode()?;
         let mut stdout = std::io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let terminal = Terminal::new(backend)?;
-        Ok(Tui { terminal })
+        Ok(Tui { terminal, args })
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let args = Args::parse();
-        let mut app = App::new(args);
+        let mut app = App::new(self.args);
 
         loop {
             self.terminal.draw(ui)?;
@@ -58,7 +58,7 @@ impl Drop for Tui {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut tui = Tui::new()?;
+    let mut tui = Tui::new(Args::parse())?;
     tui.run()
 }
 

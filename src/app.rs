@@ -1,6 +1,6 @@
 use std::{
     fs::{File, OpenOptions},
-    os::{fd::OwnedFd, unix::fs::OpenOptionsExt},
+    os::{fd::{OwnedFd, AsRawFd, RawFd, AsFd, BorrowedFd}, unix::fs::OpenOptionsExt},
     path::Path,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,6 +11,7 @@ use std::{
 use crossbeam_channel::{Receiver, Sender};
 use crossterm::event::{self, Event, KeyCode};
 use input::{Libinput, LibinputInterface, event::KeyboardEvent};
+use nix::poll::{PollFd, PollFlags, poll};
 
 use crate::cli::Args;
 
@@ -116,14 +117,15 @@ impl App {
             let mut input = Libinput::new_with_udev(UnixInputInterface);
             input.udev_assign_seat("seat0").unwrap();
             let mut is_release = false;
+            let raw_fd = CustomFD(input.as_raw_fd());
+            let pollfd = PollFd::new(&raw_fd, PollFlags::POLLIN);
 
-            'root: while !should_quit.load(Ordering::SeqCst) {
+            'root: while poll(&mut [pollfd], -1).is_ok() && !should_quit.load(Ordering::SeqCst) {
                 let Ok(_) = input.dispatch() else { break };
 
                 if args.only_focused && !is_focused.load(Ordering::SeqCst) {
                     continue;
                 }
-
 
                 for event in &mut input {
                     if let input::Event::Keyboard(KeyboardEvent::Key(_)) = event {
@@ -161,5 +163,12 @@ impl LibinputInterface for UnixInputInterface {
 
     fn close_restricted(&mut self, fd: OwnedFd) {
         drop(File::from(fd));
+    }
+}
+
+struct CustomFD(RawFd);
+impl AsFd for CustomFD {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.0) }
     }
 }
