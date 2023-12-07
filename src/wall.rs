@@ -29,10 +29,11 @@ impl ColorWall {
             .split(area)
             .iter()
             .copied()
-            .map(|area| Layout::default()
-                .constraints((0..row).map(|_| Ratio(1, row)).collect::<Vec<_>>())
-                .split(area)
-            )
+            .map(|area| {
+                Layout::default()
+                    .constraints((0..row).map(|_| Ratio(1, row)).collect::<Vec<_>>())
+                    .split(area)
+            })
             .collect::<Vec<_>>()
     }
 

@@ -1,10 +1,13 @@
 mod app;
+mod cli;
 mod wall;
 
-use app::{App, Action};
+use app::{Action, App};
+use clap::Parser;
+use cli::Args;
 use crossterm::{
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::prelude::*;
 use std::error::Error;
@@ -25,7 +28,8 @@ impl Tui {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let mut app = App::new();
+        let args = Args::parse();
+        let mut app = App::new(args);
 
         loop {
             self.terminal.draw(ui)?;
@@ -35,10 +39,10 @@ impl Tui {
                 Ok(action) => match action {
                     Action::Quit => break,
                     Action::Render => (),
-                }
-                Err(_) => break
+                },
+                Err(_) => break,
             }
-        };
+        }
 
         Ok(())
     }
@@ -47,10 +51,7 @@ impl Tui {
 impl Drop for Tui {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
-        let _ = execute!(
-            self.terminal.backend_mut(),
-            LeaveAlternateScreen
-        );
+        let _ = execute!(self.terminal.backend_mut(), LeaveAlternateScreen);
         let _ = self.terminal.show_cursor();
     }
 }
