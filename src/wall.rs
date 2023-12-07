@@ -50,7 +50,7 @@ impl ColorWall {
         if len < 100 {
             len % 25
         } else {
-            len / 25
+            len / 15
         }
     }
 }
