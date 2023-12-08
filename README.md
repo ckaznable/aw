@@ -1,6 +1,6 @@
-# Dynamic Color Wall in Terminal
+# Color Wall
 
-Dynamic Color Wall is a terminal tool designed to provide a dynamic color experience in your terminal environment. It reads keyboard keypresses and modifies the terminal's background color accordingly.
+Color Wall is a terminal tool designed to provide a dynamic color experience in your terminal environment. It reads keyboard keypresses and modifies the terminal's background color accordingly.
 
 ## Usage
 
